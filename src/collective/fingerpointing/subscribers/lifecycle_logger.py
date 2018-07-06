@@ -34,5 +34,9 @@ def lifecycle_logger(obj, event):
     else:  # should never happen
         action = '-'
 
-    extras = 'object=' + repr(obj)
+    extra_info = {'object': obj}
+    extras = log_info.format_extras('lifecycle',
+                                    event,
+                                    action,
+                                    extra_info)
     log_info(AUDIT_MESSAGE.format(user, ip, action, extras))

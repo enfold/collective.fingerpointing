@@ -3,6 +3,7 @@ from collective.fingerpointing.config import fingerpointing_config
 from collective.fingerpointing.config import LOG_FORMAT
 from collective.fingerpointing.config import PROJECTNAME
 
+from importlib import import_module
 import logging
 import time
 import zc.lockfile
@@ -17,6 +18,7 @@ class LogInfo(object):
         self.logger = logging.getLogger(PROJECTNAME)
         self.logfile = None
         self.handler = None
+        self.extras_handlers = None
         self.configure(config)
 
     @property
@@ -46,6 +48,22 @@ class LogInfo(object):
         self.handler.setFormatter(formatter)
         self.logger.addHandler(self.handler)
         commonlogger.info('Logging audit information to ' + self.logfile)
+        extras = config.get('audit-log-extras-handler', None)
+        if extras is not None:
+            try:
+                self.extras_handlers = import_module(extras)
+                commonlogger.info('Found extras handler at ' + extras)
+            except ImportError:
+                commonlogger.warn('Extras handler not found at ' + extras)
+
+    def format_extras(self, subscriber_type, event, action, extra_info):
+        if self.extras_handlers is not None:
+            handler = getattr(self.extras_handlers, subscriber_type, None)
+            if handler is not None:
+                # handler must return a dict with string keys and values
+                extra_info = handler(event, action, extra_info)
+        return ' '.join(['{0}={1}'.format(k, ' '.join(str(extra_info[k]).split()))
+                         for k in extra_info.keys()])
 
     def __call__(self, *args, **kwargs):
         """Log information to a file handling access from multiple instances.
