@@ -26,6 +26,13 @@ class LogInfo(object):
         return bool(self.logfile)
 
     def configure(self, config, logformat=LOG_FORMAT):
+        extras = config.get('audit-log-extras-handler', None)
+        if extras is not None:
+            try:
+                self.extras_handlers = import_module(extras)
+                commonlogger.info('Found extras handler at ' + extras)
+            except ImportError:
+                commonlogger.warn('Extras handler not found at ' + extras)
         self.logfile = config.get('audit-log', None)
         if self.logfile is None:
             commonlogger.warn(
@@ -48,13 +55,6 @@ class LogInfo(object):
         self.handler.setFormatter(formatter)
         self.logger.addHandler(self.handler)
         commonlogger.info('Logging audit information to ' + self.logfile)
-        extras = config.get('audit-log-extras-handler', None)
-        if extras is not None:
-            try:
-                self.extras_handlers = import_module(extras)
-                commonlogger.info('Found extras handler at ' + extras)
-            except ImportError:
-                commonlogger.warn('Extras handler not found at ' + extras)
 
     def format_extras(self, subscriber_type, event, action, extra_info):
         if self.extras_handlers is not None:
